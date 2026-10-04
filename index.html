@@ -1,0 +1,424 @@
+
+from IPython.display import display, HTML
+
+game = r"""
+<div id="highwayRush" style="max-width:1100px;margin:auto;background:#07111f;color:white;padding:16px;border-radius:18px;font-family:Arial,sans-serif">
+<style>
+#highwayRush *{box-sizing:border-box}
+#highwayRush button,#highwayRush input,#highwayRush select{font:inherit}
+#highwayRush button{background:#087ff5;color:white;border:0;padding:12px 16px;border-radius:9px;cursor:pointer;font-weight:bold}
+#highwayRush button:hover{filter:brightness(1.15)}
+#highwayRush .secondary{background:#192e45;border:1px solid #395773}
+#highwayRush .gold{background:#ffbd26;color:#172033}
+#highwayRush .panel{background:#102137;border:1px solid #2e4965;border-radius:14px;padding:20px}
+#highwayRush .screen{display:none}
+#highwayRush .screen.active{display:block}
+#highwayRush .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
+#highwayRush .stat{background:#19314a;padding:13px;border-radius:10px;text-align:center}
+#highwayRush input,#highwayRush select{width:100%;padding:12px;background:#071525;color:white;border:1px solid #3b5772;border-radius:8px;margin:7px 0}
+#highwayRush canvas{width:100%;display:block;border-radius:12px;background:#85c8f7;touch-action:none;cursor:crosshair}
+#highwayRush .bikeCard{background:#172c43;padding:15px;border:1px solid #36516d;border-radius:12px}
+#highwayRush .bikeArt{text-align:center;font-size:55px;padding:12px}
+#highwayRush .top{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+</style>
+
+<div class="top">
+<div>
+<div style="font-size:12px;color:#55b5ff;letter-spacing:3px">MOTORSPORT EXPERIENCE</div>
+<div style="font-size:28px;font-weight:900">🏍 HIGHWAY <span style="color:#ffbd29">RUSH</span></div>
+</div>
+<div id="userLabel">Guest Rider</div>
+</div>
+
+<div id="login" class="screen active panel" style="max-width:480px;margin:30px auto;text-align:center">
+<div style="font-size:65px">🏍️</div>
+<h2>Create Your Rider Account</h2>
+<p style="color:#a6b9ce">Save your coins, bikes and progress.</p>
+<input id="username" placeholder="Username">
+<input id="password" type="password" placeholder="Password">
+<button style="width:100%" onclick="register()">Create Account</button>
+<button class="secondary" style="width:100%;margin-top:10px" onclick="loginUser()">Login</button>
+<p id="loginMessage" style="color:#ffbd29"></p>
+<p style="font-size:12px;color:#a6b9ce">Local demo account. Do not use a real password.</p>
+</div>
+
+<div id="home" class="screen panel">
+<div style="text-align:center;padding:20px">
+<div style="font-size:70px">🏍️</div>
+<h1 style="font-size:40px">HIGHWAY <span style="color:#ffbd29">RUSH</span></h1>
+<p style="color:#a6b9ce">Ride fast. Dodge traffic. Unlock your dream bike.</p>
+<div class="top" style="justify-content:center">
+<div class="stat">🪙 Coins<br><b id="coinsHome">0</b></div>
+<div class="stat">🏆 Level<br><b id="levelHome">1</b></div>
+<div class="stat">📏 Best<br><b id="bestHome">0 m</b></div>
+</div>
+</div>
+<div class="grid">
+<button class="gold" onclick="startGame()">▶ PLAY</button>
+<button class="secondary" onclick="showScreen('progress')">📊 Progress</button>
+<button class="secondary" onclick="showScreen('leader')">🏆 Leaderboard</button>
+<button class="secondary" onclick="showScreen('garage')">🏍 Garage</button>
+<button class="secondary" onclick="showScreen('settings')">⚙ Settings</button>
+</div>
+</div>
+
+<div id="race" class="screen">
+<div class="top" style="margin-bottom:10px">
+<button class="secondary" onclick="pauseGame()">Ⅱ Pause</button>
+<div>🪙 <b id="raceCoins">0</b></div>
+<div>LEVEL <b id="raceLevel">1</b></div>
+<div>BEST <b id="raceBest">0</b> m</div>
+</div>
+<canvas id="road" width="900" height="560"></canvas>
+<div class="top" style="margin-top:10px">
+<div class="stat">SPEED<br><b id="speedText" style="font-size:25px">45 km/h</b></div>
+<div class="stat">DISTANCE<br><b id="distanceText">0 m</b></div>
+<div class="stat">RACE COINS<br><b id="earnedText">0</b></div>
+</div>
+<div class="panel" style="margin-top:10px;text-align:center;color:#a6b9ce;font-size:13px">
+🖱 Move mouse left/right to steer • Move up to accelerate • Move down to brake
+</div>
+</div>
+
+<div id="pause" class="screen panel" style="max-width:500px;margin:30px auto;text-align:center">
+<h1>⏸ Game Paused</h1>
+<button style="width:100%" onclick="resumeGame()">▶ Resume</button>
+<button class="secondary" style="width:100%;margin-top:10px" onclick="showScreen('settings')">⚙ Settings</button>
+<button class="secondary" style="width:100%;margin-top:10px" onclick="finishToMenu()">Main Menu</button>
+</div>
+
+<div id="result" class="screen panel" style="max-width:550px;margin:30px auto;text-align:center">
+<div style="font-size:60px">🏁</div>
+<h1 id="resultTitle">Race Complete!</h1>
+<h2 id="resultCoins" style="color:#ffc12e">+0 Coins</h2>
+<div class="stat">Distance: <b id="resultDistance">0</b> m</div>
+<div class="stat" style="margin-top:10px">Best: <b id="resultBest">0</b> m</div>
+<button style="width:100%;margin-top:15px" onclick="startGame()">↻ Race Again</button>
+<button class="secondary" style="width:100%;margin-top:10px" onclick="finishToMenu()">Main Menu</button>
+</div>
+
+<div id="progress" class="screen panel">
+<h2>📊 Rider Progress</h2>
+<div class="grid">
+<div class="stat">Level<h2 id="pLevel">1</h2></div>
+<div class="stat">Coins<h2 id="pCoins">0</h2></div>
+<div class="stat">Races<h2 id="pRaces">0</h2></div>
+<div class="stat">Best<h2 id="pBest">0 m</h2></div>
+</div>
+<h3>Next Level</h3>
+<div style="height:12px;background:#263d54;border-radius:20px;overflow:hidden">
+<div id="xpBar" style="height:100%;width:0%;background:#18a0ff"></div>
+</div>
+<p id="xpText" style="color:#a6b9ce"></p>
+<button class="secondary" onclick="showScreen('home')">← Back</button>
+</div>
+
+<div id="leader" class="screen panel">
+<h2>🏆 Local Leaderboard</h2>
+<div id="leaderRows"></div>
+<button class="secondary" onclick="showScreen('home')">← Back</button>
+</div>
+
+<div id="garage" class="screen panel">
+<h2>🏍 Bike Garage</h2>
+<p>Available Coins: 🪙 <b id="garageCoins">0</b></p>
+<div id="bikeList" class="grid"></div>
+<h2>🔧 Bike Modifications</h2>
+<div class="bikeCard">
+Engine Upgrade: <b id="engineLevel">0</b>
+<p style="color:#a6b9ce">Improves acceleration and maximum speed.</p>
+<button onclick="upgradeEngine()">Upgrade Engine — <span id="enginePrice">100</span> coins</button>
+</div>
+<div class="bikeCard" style="margin-top:10px">
+Handling Upgrade: <b id="handlingLevel">0</b>
+<p style="color:#a6b9ce">Improves steering response.</p>
+<button onclick="upgradeHandling()">Upgrade Handling — <span id="handlingPrice">100</span> coins</button>
+</div>
+<button class="secondary" style="margin-top:15px" onclick="showScreen('home')">← Back</button>
+</div>
+
+<div id="settings" class="screen panel">
+<h2>⚙ Settings</h2>
+<label>Graphics</label>
+<select id="graphics" onchange="saveSettings()">
+<option>Low</option><option selected>Medium</option><option>High</option>
+</select>
+<label><input id="sound" type="checkbox" checked onchange="saveSettings()" style="width:auto"> Enable Sound</label>
+<label>Controls</label>
+<select id="controlMode" onchange="saveSettings()">
+<option>Mouse (Default)</option><option>Keyboard</option>
+</select>
+<p style="color:#a6b9ce">Keyboard: Arrow keys to steer, accelerate and brake.</p>
+<button class="secondary" onclick="showScreen('home')">Save & Back</button>
+<button style="background:#a33;margin-left:8px" onclick="logout()">Logout</button>
+</div>
+</div>
+
+<script>
+(()=>{
+const root=document.getElementById('highwayRush');
+if(root.dataset.ready)return;
+root.dataset.ready='1';
+const $=id=>root.querySelector('#'+id);
+const bikes=[
+{name:'Street 125',price:0,speed:115,acc:1,color:'#e83d42'},
+{name:'Sport 250',price:350,speed:155,acc:1.25,color:'#20a3ed'},
+{name:'Racer 400',price:850,speed:195,acc:1.5,color:'#ffb21c'},
+{name:'Superbike 600',price:1700,speed:240,acc:1.8,color:'#a77bff'},
+{name:'Hyper 1000',price:3500,speed:300,acc:2.2,color:'#43dfaa'}
+];
+let data=null,raf=0,active=false,mouseX=.5,mouseY=.5;
+let x=450,speed=45,distance=0,roadOffset=0,frame=0,last=0;
+let traffic=[],bikeIndex=0,engine=0,handling=0;
+let keys={};
+const canvas=$('road'),ctx=canvas.getContext('2d');
+const W=900,H=560;
+function save(){if(data)localStorage.setItem('highway_'+data.name,JSON.stringify(data));}
+function showScreen(id){
+cancelAnimationFrame(raf);active=false;
+root.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+$(id).classList.add('active');
+if(id==='home')refresh();
+if(id==='garage')renderGarage();
+if(id==='progress')renderProgress();
+if(id==='leader')renderLeader();
+}
+function register(){
+let n=$('username').value.trim(),p=$('password').value;
+if(n.length<3||p.length<3){$('loginMessage').textContent='Enter at least 3 characters.';return;}
+if(localStorage.getItem('highway_'+n)){$('loginMessage').textContent='Account exists. Login instead.';return;}
+data={name:n,password:p,coins:0,level:1,best:0,races:0,totalDistance:0,owned:[0],bike:0,engine:0,handling:0,settings:{sound:true,graphics:'Medium',control:'Mouse (Default)'}};
+save();enter();
+}
+function loginUser(){
+let n=$('username').value.trim(),p=$('password').value;
+try{let d=JSON.parse(localStorage.getItem('highway_'+n));if(!d||d.password!==p)throw 0;data=d;enter();}
+catch(e){$('loginMessage').textContent='Incorrect username or password.';}
+}
+function enter(){
+bikeIndex=data.bike||0;engine=data.engine||0;handling=data.handling||0;
+$('userLabel').textContent='👤 '+data.name;
+$('graphics').value=data.settings.graphics;
+$('sound').checked=data.settings.sound;
+$('controlMode').value=data.settings.control;
+showScreen('home');
+}
+function logout(){save();data=null;showScreen('login');}
+function refresh(){
+$('coinsHome').textContent=data.coins;
+$('levelHome').textContent=data.level;
+$('bestHome').textContent=data.best+' m';
+}
+function renderProgress(){
+$('pLevel').textContent=data.level;$('pCoins').textContent=data.coins;
+$('pRaces').textContent=data.races;$('pBest').textContent=data.best+' m';
+let xp=data.totalDistance%1000;
+$('xpBar').style.width=xp/10+'%';
+$('xpText').textContent=xp+' / 1000 m';
+}
+function renderLeader(){
+let rows=[{name:data.name,best:data.best}];
+for(let i=0;i<localStorage.length;i++){
+let k=localStorage.key(i);
+if(k.startsWith('highway_'))try{
+let d=JSON.parse(localStorage.getItem(k));
+if(d&&d.name!==data.name)rows.push({name:d.name,best:d.best||0});
+}catch(e){}
+}
+rows.sort((a,b)=>b.best-a.best);
+$('leaderRows').innerHTML=rows.slice(0,10).map((r,i)=>`<div class="stat" style="margin:8px 0;text-align:left">${i+1}. ${r.name}<span style="float:right">${r.best} m</span></div>`).join('');
+}
+function renderGarage(){
+$('garageCoins').textContent=data.coins;
+$('bikeList').innerHTML=bikes.map((b,i)=>{
+let own=data.owned.includes(i),selected=data.bike===i;
+return `<div class="bikeCard"><div class="bikeArt" style="color:${b.color}">🏍</div><h3>${b.name}</h3><p>Top speed: ${b.speed+engine*8} km/h</p><p>Price: ${b.price} 🪙</p><button ${selected?'disabled':''} onclick="selectBike(${i})">${selected?'Selected':own?'Select':'Unlock Bike'}</button></div>`;
+}).join('');
+$('engineLevel').textContent=engine;$('handlingLevel').textContent=handling;
+$('enginePrice').textContent=100+engine*150;
+$('handlingPrice').textContent=100+handling*150;
+}
+window.selectBike=i=>{
+if(data.owned.includes(i)){data.bike=i;bikeIndex=i;save();renderGarage();return;}
+if(data.coins>=bikes[i].price){data.coins-=bikes[i].price;data.owned.push(i);data.bike=i;bikeIndex=i;save();renderGarage();}
+else alert('Not enough coins!');
+};
+window.upgradeEngine=()=>{
+let p=100+engine*150;
+if(engine>=5)return alert('Maximum level reached');
+if(data.coins<p)return alert('Not enough coins');
+data.coins-=p;engine++;data.engine=engine;save();renderGarage();
+};
+window.upgradeHandling=()=>{
+let p=100+handling*150;
+if(handling>=5)return alert('Maximum level reached');
+if(data.coins<p)return alert('Not enough coins');
+data.coins-=p;handling++;data.handling=handling;save();renderGarage();
+};
+function saveSettings(){
+data.settings={sound:$('sound').checked,graphics:$('graphics').value,control:$('controlMode').value};save();
+}
+function startGame(){
+showScreen('race');active=true;
+x=450;speed=45;distance=0;traffic=[];roadOffset=0;frame=0;last=performance.now();
+$('raceLevel').textContent=data.level;
+$('raceBest').textContent=data.best;
+$('raceCoins').textContent=data.coins;
+raf=requestAnimationFrame(loop);
+}
+function pauseGame(){if(!active)return;active=false;showScreen('pause');}
+function resumeGame(){showScreen('race');active=true;last=performance.now();raf=requestAnimationFrame(loop);}
+function finishToMenu(){save();showScreen('home');}
+function endRace(crash){
+active=false;cancelAnimationFrame(raf);
+let reward=Math.floor(distance/30)+data.level*10;
+if(crash)reward=Math.floor(reward*.65);
+data.coins+=reward;data.races++;
+data.totalDistance+=Math.floor(distance);
+data.best=Math.max(data.best,Math.floor(distance));
+data.level=Math.max(data.level,1+Math.floor(data.totalDistance/1000));
+save();
+$('resultTitle').textContent=crash?'Ride Over!':'Race Complete!';
+$('resultCoins').textContent='+'+reward+' Coins';
+$('resultDistance').textContent=Math.floor(distance);
+$('resultBest').textContent=data.best;
+showScreen('result');
+}
+function drawRoad(dt){
+let g=ctx.createLinearGradient(0,0,0,H);
+g.addColorStop(0,'#83c9f8');g.addColorStop(.42,'#c3e6ff');
+g.addColorStop(.43,'#347e35');g.addColorStop(1,'#235b2b');
+ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+
+// Narrower highway
+ctx.fillStyle='#555e67';ctx.fillRect(185,0,530,H);
+ctx.fillStyle='#dfe4e8';ctx.fillRect(185,0,5,H);ctx.fillRect(710,0,5,H);
+ctx.fillStyle='#303943';ctx.fillRect(195,0,510,H);
+
+let roadL=200,roadW=500,lane=125;
+ctx.fillStyle='#e7e9e9';
+for(let j=1;j<4;j++){
+for(let y=-70+(roadOffset%105);y<H;y+=105)
+ctx.fillRect(roadL+j*lane-3,y,6,55);
+}
+ctx.fillStyle='#d3d7d9';ctx.fillRect(200,0,5,H);ctx.fillRect(695,0,5,H);
+
+// Moving roadside scenery
+roadOffset+=speed*dt*1.8;
+for(let side of [0,1]){
+let sx=side?825:65;
+for(let y=-60+(roadOffset%170);y<H;y+=170){
+ctx.fillStyle='#326e35';
+ctx.beginPath();ctx.arc(sx+Math.sin(y)*8,y,17,0,7);ctx.fill();
+ctx.fillStyle='#76563a';ctx.fillRect(sx-3,y+8,6,25);
+}
+}
+}
+function drawTraffic(){
+for(let t of traffic){
+ctx.fillStyle='rgba(0,0,0,.3)';
+ctx.fillRect(t.x-22,t.y+8,44,12);
+
+// Cars and trucks only
+if(t.type==='truck'){
+ctx.fillStyle=t.color;ctx.fillRect(t.x-22,t.y-35,44,75);
+ctx.fillStyle='#b7d9ed';ctx.fillRect(t.x-15,t.y-28,30,15);
+ctx.fillStyle='#202832';ctx.fillRect(t.x-18,t.y+25,36,12);
+}else{
+ctx.fillStyle=t.color;ctx.fillRect(t.x-19,t.y-28,38,62);
+ctx.fillStyle='#a9d9ee';ctx.fillRect(t.x-13,t.y-20,26,14);
+ctx.fillStyle='#222a33';ctx.fillRect(t.x-15,t.y+8,30,12);
+}
+ctx.fillStyle='#f33';
+ctx.fillRect(t.x-15,t.y+27,7,5);ctx.fillRect(t.x+8,t.y+27,7,5);
+}
+}
+function drawBike(){
+let b=bikes[bikeIndex];
+ctx.save();ctx.translate(x,H-105);
+ctx.fillStyle='rgba(0,0,0,.35)';
+ctx.beginPath();ctx.ellipse(0,25,33,52,0,0,7);ctx.fill();
+ctx.fillStyle='#151a20';
+ctx.beginPath();ctx.ellipse(0,10,17,43,0,0,7);ctx.fill();
+ctx.fillStyle=b.color;
+ctx.beginPath();ctx.moveTo(0,-48);ctx.lineTo(23,-5);ctx.lineTo(17,27);ctx.lineTo(-17,27);ctx.lineTo(-23,-5);ctx.closePath();ctx.fill();
+ctx.fillStyle='#e7f6ff';ctx.fillRect(-9,-39,18,8);
+ctx.fillStyle='#252b35';ctx.fillRect(-27,-12,54,7);
+ctx.fillStyle='#ff2929';ctx.fillRect(-9,27,18,7);
+ctx.restore();
+}
+function loop(now){
+if(!active)return;
+let dt=Math.min((now-last)/1000,.04);last=now;frame++;
+let throttle=mouseY<.43?1:mouseY>.64?-1:0;
+if($('controlMode').value==='Keyboard'){
+if(keys.ArrowUp)throttle=1;
+if(keys.ArrowDown)throttle=-1;
+if(keys.ArrowLeft)mouseX=.2;
+if(keys.ArrowRight)mouseX=.8;
+}
+let max=bikes[bikeIndex].speed+engine*8;
+speed+=throttle*(throttle>0?65:100)*dt*bikes[bikeIndex].acc;
+speed-=4*dt;
+speed=Math.max(0,Math.min(max,speed));
+
+let target=200+mouseX*500;
+x+=(target-x)*Math.min(1,dt*(5+handling*.7));
+distance+=speed*dt/3.6;
+
+// Traffic becomes denser at higher levels
+if(frame%Math.max(25,90-data.level*4)===0){
+let lane=Math.floor(Math.random()*4);
+traffic.push({
+x:262+lane*125,
+y:-100,
+color:['#e7e7e7','#263f68','#bd3434','#d4a82b','#303b43'][Math.floor(Math.random()*5)],
+type:Math.random()<.2?'truck':'car',
+speed:Math.random()*45+30
+});
+}
+
+// Forward traffic animation: vehicles travel along the road
+// and approach the player in the racing perspective.
+for(let t of traffic){
+t.y+=(speed*1.7+90+t.speed+data.level*10)*dt;
+}
+traffic=traffic.filter(t=>t.y<H+100);
+
+for(let t of traffic){
+if(Math.abs(t.x-x)<36&&t.y>H-155&&t.y<H-65){
+endRace(true);return;
+}
+}
+
+drawRoad(dt);drawTraffic();drawBike();
+$('speedText').textContent=Math.round(speed)+' km/h';
+$('distanceText').textContent=Math.floor(distance)+' m';
+$('earnedText').textContent=Math.floor(distance/30)+data.level*10;
+raf=requestAnimationFrame(loop);
+}
+let keys={};
+document.addEventListener('keydown',e=>{
+keys[e.key]=true;
+if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key))e.preventDefault();
+});
+document.addEventListener('keyup',e=>keys[e.key]=false);
+canvas.addEventListener('pointermove',e=>{
+let r=canvas.getBoundingClientRect();
+mouseX=Math.max(0,Math.min(1,(e.clientX-r.left)/r.width));
+mouseY=Math.max(0,Math.min(1,(e.clientY-r.top)/r.height));
+});
+window.startGame=startGame;
+window.pauseGame=pauseGame;
+window.resumeGame=resumeGame;
+window.finishToMenu=finishToMenu;
+window.showScreen=showScreen;
+window.register=register;
+window.loginUser=loginUser;
+window.logout=logout;
+window.saveSettings=saveSettings;
+})();
+</script>
+"""
+
+display(HTML(game))
